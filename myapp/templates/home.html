@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 420px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            background-color: #4a90e2;
+            color: #ffffff;
+            padding: 15px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            position: relative;
+        }
+
+        .chat-logout {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        .chat-logout a {
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 10px;
+            background-color: #f0f4f8;
+            overflow-y: auto;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            max-width: 80%;
+            padding: 10px;
+            border-radius: 8px;
+            position: relative;
+            font-size: 14px;
+        }
+
+        .message.right {
+            align-self: flex-end;
+            background-color: #d0e6f5;
+            color: #2c3e50;
+        }
+
+        .message.left {
+            align-self: flex-start;
+            background-color: #e5e5ea;
+            color: #333;
+        }
+
+        .message .username {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .message .timestamp {
+            font-size: 10px;
+            margin-top: 5px;
+            color: #888;
+        }
+
+        .chat-input-container {
+            display: flex;
+            padding: 10px;
+            background-color: #ffffff;
+            border-top: 1px solid #ddd;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .send-button {
+            background-color: #4a90e2;
+            border: none;
+            color: #fff;
+            padding: 8px 12px;
+            margin-left: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .send-button:hover {
+            background-color: #357ab8;
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        Real-Time Chat
+        <div class="chat-logout">
+            {% if request.user.is_authenticated %}
+            <a href="{% url 'logout' %}">Logout</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+        <!-- Messages will appear here -->
+    </div>
+    <div class="chat-input-container">
+        <input type="text" id="messageInput" class="chat-input" placeholder="Type your message...">
+        <button class="send-button" id="sendButton"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
+
+<script>
+    const chatSocket = new WebSocket("ws://" + window.location.host + "/");
+    chatSocket.onopen = function () {
+        console.log("Connected to chat server");
+    };
+
+    chatSocket.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        const chatMessages = document.getElementById("chatMessages");
+
+        const messageEl = document.createElement("div");
+        messageEl.className = `message ${data.username === "{{ request.user.username }}" ? 'right' : 'left'}`;
+        messageEl.innerHTML = `
+            <div class="username">${data.username}</div>
+            <div>${data.message}</div>
+            <div class="timestamp">${data.time}</div>
+        `;
+        chatMessages.appendChild(messageEl);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+
+    document.getElementById("sendButton").onclick = function () {
+        const messageInput = document.getElementById("messageInput");
+        if (messageInput.value.trim() !== "") {
+            chatSocket.send(JSON.stringify({
+                message: messageInput.value,
+                username: "{{ request.user.username }}",
+                time: new Date().toLocaleTimeString()
+            }));
+            messageInput.value = "";
+        }
+    };
+
+    document.getElementById("messageInput").onkeyup = function (event) {
+        if (event.keyCode === 13) {
+            document.getElementById("sendButton").click();
+        }
+    };
+</script>
+
+</body>
+</html>
